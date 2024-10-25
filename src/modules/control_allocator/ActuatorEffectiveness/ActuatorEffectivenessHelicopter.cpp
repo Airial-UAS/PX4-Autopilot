@@ -163,6 +163,9 @@ void ActuatorEffectivenessHelicopter::updateSetpoint(const matrix::Vector<float,
 				- control_sp(ControlAxis::ROLL) * roll_coeff
 				+ _geometry.swash_plate_servos[i].trim;
 
+		// Apply linearisation to the actuator setpoint if enabled
+		actuator_sp(_first_swash_plate_servo_index + i) = getLinearServoOutput(actuator_sp(_first_swash_plate_servo_index + i));
+
 		// Saturation check for roll & pitch
 		if (actuator_sp(_first_swash_plate_servo_index + i) < actuator_min(_first_swash_plate_servo_index + i)) {
 			setSaturationFlag(roll_coeff, _saturation_flags.roll_pos, _saturation_flags.roll_neg);
@@ -174,6 +177,33 @@ void ActuatorEffectivenessHelicopter::updateSetpoint(const matrix::Vector<float,
 		}
 	}
 }
+
+float ActuatorEffectivenessHelicopter::getLinearServoOutput(float input) const
+
+{
+    // contrain float between -1 and 1
+    if (input < -1.0f) {
+        return -1.0f;
+    } else if (input > 1.0f) {
+        return 1.0f;
+    }
+
+    //servo output is calculated by normalizing input to 50 deg arm rotation as full input for a linear throw
+    // check float before finding arc sin
+    const float f = 0.766044f * input;
+    if (isnan(f)) {
+        return 0.0f;
+    }
+    if (f >= 1.0f) {
+        f = 3.14159/2; // pi/2
+    }
+    if (f <= -1.0f) {
+        f=-3.14159/2 // -pi/2;
+    }
+
+    return 1.145916*asinf(f);
+}
+
 
 bool ActuatorEffectivenessHelicopter::mainMotorEnaged()
 {
