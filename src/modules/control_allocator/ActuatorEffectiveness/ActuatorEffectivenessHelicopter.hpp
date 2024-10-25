@@ -85,6 +85,8 @@ private:
 	float throttleSpoolupProgress();
 	bool mainMotorEnaged();
 
+	float getLinearServoOutput(float input) const;
+
 	void updateParams() override;
 
 	struct SaturationFlags {

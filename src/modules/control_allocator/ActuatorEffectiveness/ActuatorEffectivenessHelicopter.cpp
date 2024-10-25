@@ -181,6 +181,7 @@ void ActuatorEffectivenessHelicopter::updateSetpoint(const matrix::Vector<float,
 float ActuatorEffectivenessHelicopter::getLinearServoOutput(float input) const
 
 {
+
     // contrain float between -1 and 1
     if (input < -1.0f) {
         return -1.0f;
@@ -190,18 +191,18 @@ float ActuatorEffectivenessHelicopter::getLinearServoOutput(float input) const
 
     //servo output is calculated by normalizing input to 50 deg arm rotation as full input for a linear throw
     // check float before finding arc sin
-    const float f = 0.766044f * input;
-    if (isnan(f)) {
-        return 0.0f;
+    float f = 0.766044f * input;
+    if (std::isnan(f)) {
+        f = 0.0f;
     }
     if (f >= 1.0f) {
-        f = 3.14159/2; // pi/2
+        f = M_PI_2_F; // pi/2
     }
     if (f <= -1.0f) {
-        f=-3.14159/2 // -pi/2;
+        f= -M_PI_2_F; // -pi/2;
     }
 
-    return 1.145916*asinf(f);
+    return 1.145916f*asinf(f);
 }
 
 
