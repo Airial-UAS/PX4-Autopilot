@@ -64,6 +64,7 @@ public:
 		float yaw_throttle_scale;
 		float yaw_sign;
 		float spoolup_time;
+		float linearise_servos;
 	};
 
 	ActuatorEffectivenessHelicopter(ModuleParams *parent);
@@ -84,6 +85,8 @@ public:
 private:
 	float throttleSpoolupProgress();
 	bool mainMotorEnaged();
+
+	float getLinearServoOutput(float input) const;
 
 	void updateParams() override;
 
@@ -114,6 +117,8 @@ private:
 		param_t yaw_throttle_scale;
 		param_t yaw_ccw;
 		param_t spoolup_time;
+		param_t linearise_servos;
+
 	};
 	ParamHandles _param_handles{};
 

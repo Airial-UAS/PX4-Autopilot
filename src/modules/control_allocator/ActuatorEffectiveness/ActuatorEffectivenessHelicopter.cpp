@@ -65,6 +65,8 @@ ActuatorEffectivenessHelicopter::ActuatorEffectivenessHelicopter(ModuleParams *p
 	_param_handles.yaw_throttle_scale = param_find("CA_HELI_YAW_TH_S");
 	_param_handles.yaw_ccw = param_find("CA_HELI_YAW_CCW");
 	_param_handles.spoolup_time = param_find("COM_SPOOLUP_TIME");
+	_param_handles.linearise_servos = param_find("CA_LIN_SERVO");
+
 
 	updateParams();
 }
@@ -99,6 +101,12 @@ void ActuatorEffectivenessHelicopter::updateParams()
 	param_get(_param_handles.yaw_collective_pitch_offset, &_geometry.yaw_collective_pitch_offset);
 	param_get(_param_handles.yaw_throttle_scale, &_geometry.yaw_throttle_scale);
 	param_get(_param_handles.spoolup_time, &_geometry.spoolup_time);
+
+	int32_t linearise_servos = 0;
+	param_get(_param_handles.linearise_servos, &linearise_servos);
+	_geometry.linearise_servos = (linearise_servos == 1);
+	// bool enable_linearisation = (linearise_servos == 1);
+
 	int32_t yaw_ccw = 0;
 	param_get(_param_handles.yaw_ccw, &yaw_ccw);
 	_geometry.yaw_sign = (yaw_ccw == 1) ? -1.f : 1.f;
@@ -163,6 +171,11 @@ void ActuatorEffectivenessHelicopter::updateSetpoint(const matrix::Vector<float,
 				- control_sp(ControlAxis::ROLL) * roll_coeff
 				+ _geometry.swash_plate_servos[i].trim;
 
+		if (_geometry.linearise_servos > 0.9f) {
+		// Apply linearisation to the actuator setpoint if enabled
+		actuator_sp(_first_swash_plate_servo_index + i) = getLinearServoOutput(actuator_sp(_first_swash_plate_servo_index + i));
+		}
+
 		// Saturation check for roll & pitch
 		if (actuator_sp(_first_swash_plate_servo_index + i) < actuator_min(_first_swash_plate_servo_index + i)) {
 			setSaturationFlag(roll_coeff, _saturation_flags.roll_pos, _saturation_flags.roll_neg);
@@ -174,6 +187,34 @@ void ActuatorEffectivenessHelicopter::updateSetpoint(const matrix::Vector<float,
 		}
 	}
 }
+
+float ActuatorEffectivenessHelicopter::getLinearServoOutput(float input) const
+
+{
+
+    // contrain float between -1 and 1
+    if (input < -1.0f) {
+        return -1.0f;
+    } else if (input > 1.0f) {
+        return 1.0f;
+    }
+
+    //servo output is calculated by normalizing input to 50 deg arm rotation as full input for a linear throw
+    // check float before finding arc sin
+    float f = 0.766044f * input;
+    if (std::isnan(f)) {
+        f = 0.0f;
+    }
+    if (f >= 1.0f) {
+        f = M_PI_2_F; // pi/2
+    }
+    if (f <= -1.0f) {
+        f= -M_PI_2_F; // -pi/2;
+    }
+
+    return 1.145916f*asinf(f);
+}
+
 
 bool ActuatorEffectivenessHelicopter::mainMotorEnaged()
 {

@@ -524,6 +524,13 @@ parameters:
               which is mostly the case when the main rotor turns counter-clockwise.
           type: boolean
           default: 0
+        CA_LIN_SERVO:
+          description:
+            short: Linearise servo output
+            long: |
+              This linearizes the swashplate servo's mechanical output to account for nonlinear output due to arm rotation.  This requires a specific setup procedure to work properly.  The servo arm must be centered on the mechanical throw at the servo trim position and the servo trim position kept as close to 1500 as possible. Leveling the swashplate can only be done through the pitch links.
+          type: boolean
+          default: 0
 
         # Others
         CA_FAILURE_MODE:
@@ -1086,4 +1093,5 @@ mixer:
                         name: CA_HELI_YAW_CCW
                       - label: 'Throttle spoolup time'
                         name: COM_SPOOLUP_TIME
-
+                      - label: 'Linearise servos'
+                        name: CA_LIN_SERVO
