@@ -39,6 +39,7 @@
 #include <lib/perf/perf_counter.h>
 #include <uORB/PublicationMulti.hpp>
 #include <uORB/topics/actuator_outputs.h>
+#include <uORB/topics/servo_status.h>
 #include <drivers/drv_hrt.h>
 #include <lib/mixer_module/mixer_module.hpp>
 
@@ -49,12 +50,55 @@ public:
 	static constexpr unsigned MAX_RATE_HZ = 50;
 	static constexpr unsigned UAVCAN_COMMAND_TRANSFER_PRIORITY = 6;	///< 0..31, inclusive, 0 - highest, 31 - lowest
 
+	static_assert(uavcan::equipment::actuator::ArrayCommand::FieldTypes::commands::MaxSize >= MAX_ACTUATORS, "Too many actuators");
+
 	UavcanServoController(uavcan::INode &node);
 	~UavcanServoController() = default;
 
+	int init();
+
 	void update_outputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS], unsigned num_outputs);
 
+	/**
+	 * Sets the number of rotors and enable timer
+	 */
+	void set_rotor_count(uint8_t count);
+
+	// static int max_output_value() { return uavcan::equipment::actuator::ArrayCommand::FieldTypes::commands::RawValueType::max(); }
+
+	/**
+	 * Checks all the ESCs freshness based on timestamp, if an ESC exceeds the timeout then is flagged offline.
+	 */
+	uint8_t check_servos_status();
+
+	typedef uavcan::MethodBinder<UavcanServoController *,
+		void (UavcanServoController::*)(const uavcan::ReceivedDataStructure<uavcan::equipment::actuator::Status>&)> StatusCbBinder;
+
+	servo_status_s &servo_status() { return _servo_status; }
+
+
 private:
+	/**
+	 * Servo status message reception will be reported via this callback.
+	 */
+	void servo_status_sub_cb(const uavcan::ReceivedDataStructure<uavcan::equipment::actuator::Status> &msg);
+
+	servo_status_s	_servo_status{};
+
+	uORB::PublicationMulti<servo_status_s> _servo_status_pub{ORB_ID(servo_status)};
+
+	uint8_t		_rotor_count{0};
+
+	/*
+	 * libuavcan related things
+	 */
+
 	uavcan::INode								&_node;
 	uavcan::Publisher<uavcan::equipment::actuator::ArrayCommand> _uavcan_pub_array_cmd;
+	uavcan::Subscriber<uavcan::equipment::actuator::Status, StatusCbBinder>	_uavcan_sub_status;
+
+	/*
+	 * Servo states
+	 */
+	uint8_t				_max_number_of_nonzero_outputs{0};
 };
