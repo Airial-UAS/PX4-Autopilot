@@ -102,14 +102,14 @@ void ActuatorEffectivenessHelicopter::updateParams()
 	param_get(_param_handles.yaw_throttle_scale, &_geometry.yaw_throttle_scale);
 	param_get(_param_handles.spoolup_time, &_geometry.spoolup_time);
 	int32_t yaw_ccw = 0;
-	param_get(_param_handles.yaw_ccw, &yaw_ccw);
+	// param_get(_param_handles.yaw_ccw, &yaw_ccw);
 	_geometry.yaw_sign = (yaw_ccw == 1) ? -1.f : 1.f;
 	int32_t linearize_servos = 0;
 	param_get(_param_handles.linearize_servos, &linearize_servos);
 	_geometry.linearize_servos = (linearize_servos != 0);
 	float max_servo_throw_deg = 0.f;
 	param_get(_param_handles.max_servo_throw, &max_servo_throw_deg);
-	const float max_servo_throw = math::radians(max_servo_throw_deg);
+	const float max_servo_throw = max_servo_throw_deg * M_PI_F / 180.f;
 	_geometry.max_servo_height = sinf(max_servo_throw);
 	_geometry.inverse_max_servo_throw = 1.f / max_servo_throw;
 }
