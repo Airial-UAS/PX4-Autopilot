@@ -59,20 +59,13 @@ public:
 
 	void update_outputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS], unsigned num_outputs);
 
-	/**
-	 * Sets the number of rotors and enable timer
-	 */
-	void set_rotor_count(uint8_t count);
+	// /**
+	//  * Sets the number of rotors and enable timer
+	//  */
+	// void set_rotor_count(uint8_t count);
 
 	// static int max_output_value() { return uavcan::equipment::actuator::ArrayCommand::FieldTypes::commands::RawValueType::max(); }
 
-	/**
-	 * Checks all the ESCs freshness based on timestamp, if an ESC exceeds the timeout then is flagged offline.
-	 */
-	uint8_t check_servos_status();
-
-	typedef uavcan::MethodBinder<UavcanServoController *,
-		void (UavcanServoController::*)(const uavcan::ReceivedDataStructure<uavcan::equipment::actuator::Status>&)> StatusCbBinder;
 
 	servo_status_s &servo_status() { return _servo_status; }
 
@@ -83,11 +76,22 @@ private:
 	 */
 	void servo_status_sub_cb(const uavcan::ReceivedDataStructure<uavcan::equipment::actuator::Status> &msg);
 
+	/**
+	 * Checks all the ESCs freshness based on timestamp, if an ESC exceeds the timeout then is flagged offline.
+	 */
+	uint8_t check_servos_status();
+
+	typedef uavcan::MethodBinder<UavcanServoController *,
+		void (UavcanServoController::*)(const uavcan::ReceivedDataStructure<uavcan::equipment::actuator::Status>&)> StatusCbBinder;
+
+	typedef uavcan::MethodBinder<UavcanServoController *,
+		void (UavcanServoController::*)(const uavcan::TimerEvent &)> TimerCbBinder;
+
 	servo_status_s	_servo_status{};
 
 	uORB::PublicationMulti<servo_status_s> _servo_status_pub{ORB_ID(servo_status)};
 
-	uint8_t		_rotor_count{0};
+	// uint8_t		_rotor_count{0};
 
 	/*
 	 * libuavcan related things
@@ -97,8 +101,8 @@ private:
 	uavcan::Publisher<uavcan::equipment::actuator::ArrayCommand> _uavcan_pub_array_cmd;
 	uavcan::Subscriber<uavcan::equipment::actuator::Status, StatusCbBinder>	_uavcan_sub_status;
 
-	/*
-	 * Servo states
-	 */
-	uint8_t				_max_number_of_nonzero_outputs{0};
+	// /*
+	//  * Servo states
+	//  */
+	// uint8_t				_max_number_of_nonzero_outputs{0};
 };

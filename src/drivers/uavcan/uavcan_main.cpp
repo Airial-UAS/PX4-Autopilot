@@ -56,6 +56,7 @@
 #include <arch/chip/chip.h>
 
 #include <uORB/topics/esc_status.h>
+#include <uORB/topics/servo_status.h>
 
 #include <drivers/drv_hrt.h>
 

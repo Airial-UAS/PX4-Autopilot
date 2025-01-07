@@ -77,11 +77,11 @@ UavcanServoController::update_outputs(bool stop_motors, uint16_t outputs[MAX_ACT
 	_uavcan_pub_array_cmd.broadcast(msg);
 }
 
-void
-UavcanServoController::set_rotor_count(uint8_t count)
-{
-	_rotor_count = count;
-}
+// void
+// UavcanServoController::set_rotor_count(uint8_t count)
+// {
+// 	_rotor_count = count;
+// }
 
 void
 UavcanServoController::servo_status_sub_cb(const uavcan::ReceivedDataStructure<uavcan::equipment::actuator::Status> &msg)
@@ -92,16 +92,16 @@ UavcanServoController::servo_status_sub_cb(const uavcan::ReceivedDataStructure<u
 		ref.timestamp       = hrt_absolute_time();
 		ref.servo_address = msg.getSrcNodeID().get();
 		ref.servo_position     = msg.position;
-		ref.servo_force     = msg.force;
+		ref.servo_force     = 0.5f //msg.force;
 		ref.servo_speed = msg.speed;
 		// ref.servo_rpm         = msg.rpm;
 		// ref.servo_errorcount  = msg.error_count;
 
-		_servo_status.servo_count = _rotor_count;
+		// _servo_status.servo_count = _rotor_count;
 		_servo_status.counter += 1;
 		_servo_status.servo_connectiontype = servo_status_s::SERVO_CONNECTION_TYPE_CAN;
-		_servo_status.servo_online_flags = check_servos_status();
-		_servo_status.servo_armed_flags = (1 << _rotor_count) - 1;
+		// _servo_status.servo_online_flags = check_servos_status();
+		// _servo_status.servo_armed_flags = (1 << _rotor_count) - 1;
 		_servo_status.timestamp = hrt_absolute_time();
 		_servo_status_pub.publish(_servo_status);
 	}
