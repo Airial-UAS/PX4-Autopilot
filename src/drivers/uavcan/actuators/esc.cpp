@@ -92,7 +92,12 @@ UavcanEscController::update_outputs(bool stop_motors, uint16_t outputs[MAX_ACTUA
 			msg.cmd.push_back(static_cast<unsigned>(0));
 
 		} else {
-			msg.cmd.push_back(static_cast<int>(outputs[i]));
+			// hotfix: subtract 8192 from output to create positive and negative raw commands.
+			// For non reversible ESC's min/max range needs to be set to 8192/16383 so 0 < RawCommand < 8191 always
+			// For reversible ESC's min/max range needs to be set ot 0/16383 so -8192 < RawCommand > 8191
+			// Subtract 8192 to allow negative values
+			int adjusted_output = static_cast<int>(outputs[i]) - 8192;
+			msg.cmd.push_back(adjusted_output);
 		}
 	}
 
