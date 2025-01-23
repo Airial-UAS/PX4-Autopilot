@@ -160,9 +160,17 @@ void ActuatorEffectivenessHelicopter::updateSetpoint(const matrix::Vector<float,
 	// actuator mapping
 	actuator_sp(0) = mainMotorEnaged() ? throttle : NAN;
 
-	actuator_sp(1) = control_sp(ControlAxis::YAW) * _geometry.yaw_sign
-			 + fabsf(collective_pitch - _geometry.yaw_collective_pitch_offset) * _geometry.yaw_collective_pitch_scale
-			 + throttle * _geometry.yaw_throttle_scale * spoolup_progress;
+	actuator_sp(1) = 0.f;
+
+	// Ignore any yawing during spoolup on ground.
+	if (spoolup_progress > 0.999f) {
+		actuator_sp(1) += control_sp(ControlAxis::YAW) * _geometry.yaw_sign;
+	}
+
+	// Prevent traction motors torque compensating at max negative collective during spoolup
+	actuator_sp(1) += fabsf(collective_pitch - _geometry.yaw_collective_pitch_offset) * _geometry.yaw_collective_pitch_scale * spoolup_progress;
+
+	actuator_sp(1) += throttle * _geometry.yaw_throttle_scale;
 
 	// Saturation check for yaw
 	if (actuator_sp(1) < actuator_min(1)) {
