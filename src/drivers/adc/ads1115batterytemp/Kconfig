@@ -1,0 +1,5 @@
+menuconfig DRIVERS_ADC_ADS1115BATTERYTEMP
+	bool "ads1115batterytemp"
+	default n
+	---help---
+		Enable support for ads1115 battery temp sensors

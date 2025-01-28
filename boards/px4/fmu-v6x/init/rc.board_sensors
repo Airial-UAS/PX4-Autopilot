@@ -17,6 +17,10 @@ else
 	board_adc start
 fi
 
+if param compare -s ADC_BAT_EN 1
+then
+	ads1115batterytemp start -X
+fi
 
 if param compare SENS_EN_INA226 1
 then
