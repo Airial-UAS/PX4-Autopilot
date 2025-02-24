@@ -95,12 +95,6 @@ int GZBridge::init()
 				model_pose_v.push_back(0.0);
 			}
 
-			// If model position z is less equal than 0, move above floor to prevent floor glitching
-			if (model_pose_v[2] <= 0.0) {
-				PX4_INFO("Model position z is less or equal 0.0, moving upwards");
-				model_pose_v[2] = 0.5;
-			}
-
 			gz::msgs::Pose *p = req.mutable_pose();
 			gz::msgs::Vector3d *position = p->mutable_position();
 			position->set_x(model_pose_v[0]);
@@ -141,7 +135,7 @@ int GZBridge::init()
 
 				// If Gazebo has not been called, wait 2 seconds and try again.
 				else {
-					PX4_WARN("Service call timed out as Gazebo has not been detected.");
+					PX4_WARN("Service call timed out as Gazebo has not been detected. Retrying...");
 					system_usleep(2000000);
 				}
 			}
@@ -159,7 +153,7 @@ int GZBridge::init()
 
 			while (scene_created == false) {
 				if (!callSceneInfoMsgService(scene_info_service)) {
-					PX4_WARN("Service call timed out as Gazebo has not been detected.");
+					PX4_WARN("Service call timed out as Gazebo has not been detected. Retrying...");
 					system_usleep(2000000);
 
 				} else {
@@ -226,17 +220,15 @@ int GZBridge::init()
 		PX4_WARN("failed to subscribe to %s", lidar_sensor.c_str());
 	}
 
-#if 0
 	// Airspeed: /world/$WORLD/model/$MODEL/link/airspeed_link/sensor/air_speed/air_speed
-	std::string airpressure_topic = "/world/" + _world_name + "/model/" + _model_name +
-					"/link/airspeed_link/sensor/air_speed/air_speed";
+	std::string airspeed_topic = "/world/" + _world_name + "/model/" + _model_name +
+				     "/link/airspeed_link/sensor/air_speed/air_speed";
 
-	if (!_node.Subscribe(airpressure_topic, &GZBridge::airspeedCallback, this)) {
-		PX4_ERR("failed to subscribe to %s", airpressure_topic.c_str());
+	if (!_node.Subscribe(airspeed_topic, &GZBridge::airspeedCallback, this)) {
+		PX4_ERR("failed to subscribe to %s", airspeed_topic.c_str());
 		return PX4_ERROR;
 	}
 
-#endif
 	// Air pressure: /world/$WORLD/model/$MODEL/link/base_link/sensor/air_pressure_sensor/air_pressure
 	std::string air_pressure_topic = "/world/" + _world_name + "/model/" + _model_name +
 					 "/link/base_link/sensor/air_pressure_sensor/air_pressure";
@@ -267,6 +259,11 @@ int GZBridge::init()
 
 	if (!_mixing_interface_wheel.init(_model_name)) {
 		PX4_ERR("failed to init motor output");
+		return PX4_ERROR;
+	}
+
+	if (!_gimbal.init(_world_name, _model_name)) {
+		PX4_ERR("failed to init gimbal");
 		return PX4_ERROR;
 	}
 
@@ -449,8 +446,8 @@ void GZBridge::barometerCallback(const gz::msgs::FluidPressure &air_pressure)
 	pthread_mutex_unlock(&_node_mutex);
 }
 
-#if 0
-void GZBridge::airspeedCallback(const gz::msgs::AirSpeedSensor &air_speed)
+
+void GZBridge::airspeedCallback(const gz::msgs::AirSpeed &air_speed)
 {
 	if (hrt_absolute_time() == 0) {
 		return;
@@ -475,7 +472,6 @@ void GZBridge::airspeedCallback(const gz::msgs::AirSpeedSensor &air_speed)
 
 	pthread_mutex_unlock(&_node_mutex);
 }
-#endif
 
 void GZBridge::imuCallback(const gz::msgs::IMU &imu)
 {
@@ -798,7 +794,10 @@ void GZBridge::laserScantoLidarSensorCallback(const gz::msgs::LaserScan &scan)
 			pose_orientation.y(),
 			pose_orientation.z());
 
+	const gz::math::Quaterniond q_left(0.7071068, 0, 0, -0.7071068);
+
 	const gz::math::Quaterniond q_front(0.7071068, 0.7071068, 0, 0);
+
 	const gz::math::Quaterniond q_down(0, 1, 0, 0);
 
 	if (q_sensor.Equal(q_front, 0.03)) {
@@ -807,8 +806,15 @@ void GZBridge::laserScantoLidarSensorCallback(const gz::msgs::LaserScan &scan)
 	} else if (q_sensor.Equal(q_down, 0.03)) {
 		distance_sensor.orientation = distance_sensor_s::ROTATION_DOWNWARD_FACING;
 
+	} else if (q_sensor.Equal(q_left, 0.03)) {
+		distance_sensor.orientation = distance_sensor_s::ROTATION_LEFT_FACING;
+
 	} else {
 		distance_sensor.orientation = distance_sensor_s::ROTATION_CUSTOM;
+		distance_sensor.q[0] = q_sensor.W();
+		distance_sensor.q[1] = q_sensor.X();
+		distance_sensor.q[2] = q_sensor.Y();
+		distance_sensor.q[3] = q_sensor.Z();
 	}
 
 	_distance_sensor_pub.publish(distance_sensor);
@@ -907,7 +913,7 @@ bool GZBridge::callEntityFactoryService(const std::string &service, const gz::ms
 		}
 
 	} else {
-		PX4_ERR("Service call timed out. Check GZ_SIM_RESOURCE_PATH is set correctly.");
+		PX4_WARN("Service call timed out. Check GZ_SIM_RESOURCE_PATH is set correctly.");
 		return false;
 	}
 
@@ -920,7 +926,7 @@ bool GZBridge::callSceneInfoMsgService(const std::string &service)
 	gz::msgs::Empty req;
 	gz::msgs::Scene rep;
 
-	if (_node.Request(service, req, 1000, rep, result)) {
+	if (_node.Request(service, req, 3000, rep, result)) {
 		if (!result) {
 			PX4_ERR("Scene Info service call failed.");
 			return false;
@@ -930,7 +936,7 @@ bool GZBridge::callSceneInfoMsgService(const std::string &service)
 		}
 
 	} else {
-		PX4_ERR("Service call timed out. Check GZ_SIM_RESOURCE_PATH is set correctly.");
+		PX4_WARN("Service call timed out. Check GZ_SIM_RESOURCE_PATH is set correctly.");
 		return false;
 	}
 
@@ -943,7 +949,7 @@ bool GZBridge::callStringMsgService(const std::string &service, const gz::msgs::
 
 	gz::msgs::Boolean rep;
 
-	if (_node.Request(service, req, 1000, rep, result)) {
+	if (_node.Request(service, req, 3000, rep, result)) {
 		if (!rep.data() || !result) {
 			PX4_ERR("String service call failed");
 			return false;
@@ -952,7 +958,7 @@ bool GZBridge::callStringMsgService(const std::string &service, const gz::msgs::
 	}
 
 	else {
-		PX4_ERR("Service call timed out: %s", service.c_str());
+		PX4_WARN("Service call timed out: %s", service.c_str());
 		return false;
 	}
 
@@ -965,7 +971,7 @@ bool GZBridge::callVector3dService(const std::string &service, const gz::msgs::V
 
 	gz::msgs::Boolean rep;
 
-	if (_node.Request(service, req, 1000, rep, result)) {
+	if (_node.Request(service, req, 3000, rep, result)) {
 		if (!rep.data() || !result) {
 			PX4_ERR("String service call failed");
 			return false;
@@ -974,7 +980,7 @@ bool GZBridge::callVector3dService(const std::string &service, const gz::msgs::V
 	}
 
 	else {
-		PX4_ERR("Service call timed out: %s", service.c_str());
+		PX4_WARN("Service call timed out: %s", service.c_str());
 		return false;
 	}
 
@@ -1008,6 +1014,7 @@ void GZBridge::Run()
 		_mixing_interface_esc.stop();
 		_mixing_interface_servo.stop();
 		_mixing_interface_wheel.stop();
+		_gimbal.stop();
 
 		exit_and_cleanup();
 		return;
@@ -1024,6 +1031,7 @@ void GZBridge::Run()
 		_mixing_interface_esc.updateParams();
 		_mixing_interface_servo.updateParams();
 		_mixing_interface_wheel.updateParams();
+		_gimbal.updateParams();
 	}
 
 	ScheduleDelayed(10_ms);

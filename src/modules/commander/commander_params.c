@@ -513,19 +513,6 @@ PARAM_DEFINE_INT32(COM_ARM_AUTH_MET, 0);
 PARAM_DEFINE_FLOAT(COM_ARM_AUTH_TO, 1);
 
 /**
- * Loss of position failsafe activation delay.
- *
- * This sets number of seconds that the position checks need to be failed before the failsafe will activate.
- * The default value has been optimised for rotary wing applications. For fixed wing applications, a larger value between 5 and 10 should be used.
- *
- * @unit s
- * @group Commander
- * @min 1
- * @max 100
- */
-PARAM_DEFINE_INT32(COM_POS_FS_DELAY, 1);
-
-/**
  * Horizontal position error threshold.
  *
  * This is the horizontal position error (EPH) threshold that will trigger a failsafe.
@@ -652,14 +639,6 @@ PARAM_DEFINE_INT32(COM_RCL_EXCEPT, 0);
  * @group Commander
  */
 PARAM_DEFINE_INT32(COM_ACT_FAIL_ACT, 0);
-
-/**
- * Flag to enable obstacle avoidance.
- *
- * @boolean
- * @group Commander
- */
-PARAM_DEFINE_INT32(COM_OBS_AVOID, 0);
 
 /**
  * Expect and require a healthy MAVLink parachute system
@@ -1031,3 +1010,14 @@ PARAM_DEFINE_FLOAT(COM_THROW_SPEED, 5);
  * @increment 1
  */
 PARAM_DEFINE_INT32(COM_FLTT_LOW_ACT, 3);
+
+/**
+ * Allow external mode registration while armed.
+ *
+ * By default disabled for safety reasons
+ *
+ * @group Commander
+ * @boolean
+ *
+ */
+PARAM_DEFINE_INT32(COM_MODE_ARM_CHK, 0);
