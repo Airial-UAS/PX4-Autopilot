@@ -51,6 +51,7 @@
 #include <uORB/topics/estimator_selector_status.h>
 #include <uORB/topics/estimator_sensor_bias.h>
 #include <uORB/topics/parameter_update.h>
+#include <uORB/topics/rpm.h>
 #include <uORB/topics/sensor_gyro.h>
 #include <uORB/topics/sensor_gyro_fft.h>
 #include <uORB/topics/sensor_gyro_fifo.h>
@@ -82,6 +83,7 @@ private:
 	inline float FilterAngularAcceleration(int axis, float inverse_dt_s, float data[], int N = 1);
 
 	void DisableDynamicNotchEscRpm();
+	void DisableDynamicNotchPwmRpm();
 	void DisableDynamicNotchFFT();
 	void ParametersUpdate(bool force = false);
 
@@ -89,6 +91,7 @@ private:
 	void SensorBiasUpdate(bool force = false);
 	bool SensorSelectionUpdate(const hrt_abstime &time_now_us, bool force = false);
 	void UpdateDynamicNotchEscRpm(const hrt_abstime &time_now_us, bool force = false);
+	void UpdateDynamicNotchPwmRpm(const hrt_abstime &time_now_us, bool force = false);
 	void UpdateDynamicNotchFFT(const hrt_abstime &time_now_us, bool force = false);
 	bool UpdateSampleRate();
 
@@ -104,6 +107,7 @@ private:
 	uORB::Subscription _estimator_sensor_bias_sub{ORB_ID(estimator_sensor_bias)};
 #if !defined(CONSTRAINED_FLASH)
 	uORB::Subscription _esc_status_sub {ORB_ID(esc_status)};
+	uORB::Subscription _rpm_sub {ORB_ID(rpm)};
 	uORB::Subscription _sensor_gyro_fft_sub {ORB_ID(sensor_gyro_fft)};
 #endif // !CONSTRAINED_FLASH
 
@@ -138,6 +142,7 @@ private:
 	enum DynamicNotch {
 		EscRpm = 1,
 		FFT    = 2,
+		PwmRpm = 3,
 	};
 
 	static constexpr hrt_abstime DYNAMIC_NOTCH_FITLER_TIMEOUT = 3_s;
@@ -155,6 +160,18 @@ private:
 	perf_counter_t _dynamic_notch_filter_esc_rpm_disable_perf{nullptr};
 	perf_counter_t _dynamic_notch_filter_esc_rpm_init_perf{nullptr};
 	perf_counter_t _dynamic_notch_filter_esc_rpm_update_perf{nullptr};
+
+
+	// PWM RPM from the rpm_capture driver
+	using NotchFilterPwmRpm = math::NotchFilter<float>[3];
+	NotchFilterPwmRpm *_dynamic_notch_filter_pwm_rpm{nullptr};
+
+	int _pwm_rpm_harmonics{0};
+	hrt_abstime _last_pwm_rpm_notch_update {0};
+
+	perf_counter_t _dynamic_notch_filter_pwm_rpm_disable_perf{nullptr};
+	perf_counter_t _dynamic_notch_filter_pwm_rpm_init_perf{nullptr};
+	perf_counter_t _dynamic_notch_filter_pwm_rpm_update_perf{nullptr};
 
 	// FFT
 	static constexpr int MAX_NUM_FFT_PEAKS = sizeof(sensor_gyro_fft_s::peak_frequencies_x)
